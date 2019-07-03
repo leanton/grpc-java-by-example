@@ -29,6 +29,7 @@ public class MetricsServer {
     Server server = ServerBuilder.forPort(8080).addService(new MetricsServiceImpl()).build();
 
     server.start();
+    System.out.println("Server is started");
 
     server.awaitTermination();
   }

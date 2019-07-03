@@ -44,9 +44,11 @@ public class MetricsServiceImpl extends MetricsServiceGrpc.MetricsServiceImplBas
 
       @Override
       public void onCompleted() {
+        System.out.println("Request is completed");
         responseObserver.onNext(StreamingExample.Average.newBuilder()
             .setVal(sum / count)
             .build());
+        responseObserver.onCompleted();
       }
     };
   }

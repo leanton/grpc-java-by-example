@@ -20,39 +20,63 @@ import com.example.server.streaming.MetricsServiceGrpc;
 import com.example.server.streaming.StreamingExample;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 
-import java.util.stream.Stream;
+import java.util.Arrays;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by rayt on 5/16/16.
  */
 public class MetricsClient {
-  public static void main(String[] args) throws InterruptedException {
-    ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 8080).usePlaintext(true).build();
-    MetricsServiceGrpc.MetricsServiceStub stub = MetricsServiceGrpc.newStub(channel);
 
-    StreamObserver<StreamingExample.Metric> collect = stub.collect(new StreamObserver<StreamingExample.Average>() {
-      @Override
-      public void onNext(StreamingExample.Average value) {
-        System.out.println("Average: " + value.getVal());
-      }
+    public static void main(String[] args) throws InterruptedException {
+        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 8080).usePlaintext().build();
+        MetricsServiceGrpc.MetricsServiceStub stub = MetricsServiceGrpc.newStub(channel);
+        final CountDownLatch finishLatch = new CountDownLatch(1);
 
-      @Override
-      public void onError(Throwable t) {
+        final StreamObserver<StreamingExample.Average> responseObserver = new StreamObserver<StreamingExample.Average>() {
+            @Override
+            public void onNext(StreamingExample.Average value) {
+                System.out.println("Average: " + value.getVal());
+            }
 
-      }
+            @Override
+            public void onError(Throwable t) {
+                Status status = Status.fromThrowable(t);
+                System.out.println("Request Failed: " + status);
+                finishLatch.countDown();
+            }
 
-      @Override
-      public void onCompleted() {
+            @Override
+            public void onCompleted() {
+                System.out.println("Finished request");
+                finishLatch.countDown();
+            }
+        };
 
-      }
-    });
+        final StreamObserver<StreamingExample.Metric> requestObserver = stub.collect(responseObserver);
+        try {
+            for (Long l : Arrays.asList(1L, 2L, 3L, 4L)) {
+                StreamingExample.Metric metric = StreamingExample.Metric.newBuilder().setMetric(l).build();
+                requestObserver.onNext(metric);
+                if (finishLatch.getCount() == 0) {
+                    // RPC completed or errored before we finished sending.
+                    // Sending further requests won't error, but they will just be thrown away.
+                    return;
+                }
+            }
+            requestObserver.onCompleted();
+        } catch (RuntimeException e) {
+            // Cancel RPC
+            requestObserver.onError(e);
+            throw e;
+        }
 
-    Stream.of(1L, 2L, 3L, 4L).map(l -> StreamingExample.Metric.newBuilder().setMetric(l).build())
-        .forEach(collect::onNext);
-    collect.onCompleted();
-
-    //channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
-  }
+        System.out.println("Latch count " + finishLatch.getCount());
+        finishLatch.await(5, TimeUnit.SECONDS);
+        System.out.println("Latch count " + finishLatch.getCount());
+    }
 }
