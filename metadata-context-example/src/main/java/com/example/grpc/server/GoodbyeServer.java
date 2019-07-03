@@ -17,6 +17,7 @@
 package com.example.grpc.server;
 
 import com.example.grpc.*;
+import com.example.grpc.client.JwtClientInterceptor;
 import io.grpc.*;
 import io.grpc.stub.StreamObserver;
 
