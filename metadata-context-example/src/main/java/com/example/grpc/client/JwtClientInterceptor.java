@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.grpc.server;
+package com.example.grpc.client;
 
 import com.example.grpc.Constant;
 import io.grpc.*;
@@ -23,14 +23,15 @@ import io.grpc.*;
  * Created by rayt on 10/6/16.
  */
 public class JwtClientInterceptor implements ClientInterceptor {
-  @Override
-  public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> methodDescriptor, CallOptions callOptions, Channel channel) {
-    return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(channel.newCall(methodDescriptor, callOptions)) {
-      @Override
-      public void start(Listener<RespT> responseListener, Metadata headers) {
-        headers.put(Constant.JWT_METADATA_KEY, Constant.JWT_CTX_KEY.get());
-        super.start(responseListener, headers);
-      }
-    };
-  }
+
+    @Override
+    public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> methodDescriptor, CallOptions callOptions, Channel channel) {
+        return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(channel.newCall(methodDescriptor, callOptions)) {
+            @Override
+            public void start(Listener<RespT> responseListener, Metadata headers) {
+                headers.put(Constant.JWT_METADATA_KEY, Constant.JWT_CTX_KEY.get());
+                super.start(responseListener, headers);
+            }
+        };
+    }
 }
